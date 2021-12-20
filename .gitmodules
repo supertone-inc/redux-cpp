@@ -1,0 +1,6 @@
+[submodule "test/deps/Catch2"]
+	path = test/deps/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "test/deps/RxCpp"]
+	path = test/deps/RxCpp
+	url = https://github.com/ReactiveX/RxCpp.git
