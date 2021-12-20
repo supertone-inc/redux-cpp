@@ -4,3 +4,6 @@
 [submodule "test/deps/RxCpp"]
 	path = test/deps/RxCpp
 	url = https://github.com/ReactiveX/RxCpp.git
+[submodule "test/deps/trompeloeil"]
+	path = test/deps/trompeloeil
+	url = https://github.com/rollbear/trompeloeil.git

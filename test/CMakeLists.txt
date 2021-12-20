@@ -4,7 +4,12 @@ add_executable(${PROJECT_NAME} main.cpp)
 
 add_subdirectory(deps/doctest)
 
-target_include_directories(${PROJECT_NAME} PRIVATE deps/RxCpp/Rx/v2/src)
+target_include_directories(
+    ${PROJECT_NAME}
+    PRIVATE
+        deps/trompeloeil/include
+        deps/RxCpp/Rx/v2/src
+)
 
 target_link_libraries(
     ${PROJECT_NAME}
