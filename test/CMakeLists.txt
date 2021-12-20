@@ -13,6 +13,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+FetchContent_Declare(
+    RxCpp
+    GIT_REPOSITORY  https://github.com/ReactiveX/RxCpp.git
+    GIT_TAG         v4.1.1
+    GIT_SHALLOW     TRUE
+)
+if(NOT rxcpp_POPULATED)
+    FetchContent_Populate(RxCpp)
+    include_directories(${rxcpp_SOURCE_DIR}/Rx/v2/src)
+endif()
+
 target_link_libraries(
     ${PROJECT_NAME}
     Catch2::Catch2

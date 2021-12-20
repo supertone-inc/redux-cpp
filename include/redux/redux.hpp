@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rxcpp/rx.hpp>
+
 #include <functional>
 
 namespace redux
