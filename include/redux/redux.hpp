@@ -50,7 +50,7 @@ public:
         close();
     }
 
-    auto getState() const
+    auto get_state() const
     {
         std::lock_guard<std::mutex> lock(*shared_mutex);
         return state;
@@ -63,7 +63,8 @@ public:
 
     auto subscribe(std::function<void(State)> listener)
     {
-        listener(getState());
+        listener(get_state());
+
         auto subscription = state_stream.subscribe(listener);
 
         return [=]() {

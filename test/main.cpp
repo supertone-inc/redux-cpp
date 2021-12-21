@@ -18,106 +18,91 @@ public:
     MAKE_MOCK2(reducer, State(State, Action));
 };
 
+namespace test
+{
+using State = int;
+using Action = std::string;
+using Mock = Mock<State, Action>;
+
+Mock mock;
+trompeloeil::sequence seq;
+
+auto counter_reducer = [](State state, Action action) {
+    if (action == "increase")
+    {
+        return state + 1;
+    }
+
+    if (action == "decrease")
+    {
+        return state - 1;
+    }
+
+    return state;
+};
+
 TEST_CASE("store dispatches actions")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
-
-    Mock mock;
-    auto reducer = [](State state, Action action) { return state; };
-    auto store = redux::create_store(reducer);
+    auto store = redux::create_store(counter_reducer);
     store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, action_listener("an action"));
-    store.dispatch("an action");
+    REQUIRE_CALL(mock, action_listener("increase"));
+    store.dispatch("increase");
+
+    REQUIRE_CALL(mock, action_listener("decrease"));
+    store.dispatch("decrease");
 
     store.close();
 }
 
-TEST_CASE("store calls reducer")
+TEST_CASE("store calls reducer on action dispatch")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
-
-    Mock mock;
     auto reducer = [&](State state, Action action) { return mock.reducer(state, action); };
     auto store = redux::create_store(reducer);
 
-    REQUIRE_CALL(mock, reducer(0, "an action")).RETURN(1);
-    store.dispatch("an action");
+    REQUIRE_CALL(mock, reducer(0, "action")).RETURN(0);
+    store.dispatch("action");
 
     store.close();
 }
 
-TEST_CASE("store publishes states")
+TEST_CASE("store publishes state on action dispatch")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
-
-    Mock mock;
-    trompeloeil::sequence seq;
-    auto reducer = [](State state, Action action) { return state + 1; };
-    auto store = redux::create_store(reducer);
+    auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    store.dispatch("an action");
+    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
+    store.dispatch("action");
+
+    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
+    store.dispatch("action");
 
     store.close();
 }
 
 TEST_CASE("state listeners can unsubscribe")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
-
-    Mock mock;
-    trompeloeil::sequence seq;
-    auto reducer = [](State state, Action action) { return state + 1; };
-    auto store = redux::create_store(reducer);
+    auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     auto unsubscribe = store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    store.dispatch("an action");
+    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
+    store.dispatch("action");
 
     unsubscribe();
 
     FORBID_CALL(mock, state_listener(_));
-    store.dispatch("an action");
+    store.dispatch("action");
 
     store.close();
 }
 
-TEST_CASE("store updates states")
+TEST_CASE("store updates state")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
-
-    Mock mock;
-    trompeloeil::sequence seq;
-    auto reducer = [](State state, Action action) {
-        if (action == "increase")
-        {
-            return state + 1;
-        }
-
-        if (action == "decrease")
-        {
-            return state - 1;
-        }
-
-        return state;
-    };
-    auto store = redux::create_store(reducer);
+    auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
@@ -125,40 +110,26 @@ TEST_CASE("store updates states")
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
     store.dispatch("increase");
 
+    REQUIRE_CALL(mock, state_listener(2)).IN_SEQUENCE(seq);
+    store.dispatch("increase");
+
+    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
+    store.dispatch("decrease");
+
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.dispatch("decrease");
 
     store.close();
 }
 
-TEST_CASE("store exposes states")
+TEST_CASE("store exposes state")
 {
-    using State = int;
-    using Action = std::string;
-    using Mock = Mock<State, Action>;
+    auto store = redux::create_store(counter_reducer);
 
-    Mock mock;
-    trompeloeil::sequence seq;
-    auto reducer = [](State state, Action action) {
-        if (action == "increase")
-        {
-            return state + 1;
-        }
-
-        if (action == "decrease")
-        {
-            return state - 1;
-        }
-
-        return state;
-    };
-
-    auto store = redux::create_store(reducer);
-
-    REQUIRE(store.getState() == 0);
+    REQUIRE(store.get_state() == 0);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.subscribe([&](State _) { mock.state_listener(store.getState()); });
+    store.subscribe([&](State _) { mock.state_listener(store.get_state()); });
 
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
     store.dispatch("increase");
@@ -171,13 +142,16 @@ TEST_CASE("store exposes states")
 
 TEST_CASE("store calls reducer on single thread")
 {
-    using State = int;
-    using Action = std::string;
+    const auto DISPATCH_COUNT = 100;
+
+    REQUIRE_CALL(mock, reducer(_, _)).RETURN(0).TIMES(DISPATCH_COUNT);
 
     std::thread::id non_thread_id;
     std::thread::id last_thread_id = non_thread_id;
 
     auto reducer = [&](State state, Action action) {
+        mock.reducer(state, action);
+
         auto this_thread_id = std::this_thread::get_id();
 
         if (last_thread_id == non_thread_id)
@@ -192,7 +166,8 @@ TEST_CASE("store calls reducer on single thread")
     auto store = redux::create_store(reducer);
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < 100; i++)
+
+    for (int i = 0; i < DISPATCH_COUNT; i++)
     {
         threads.push_back(std::thread([&]() { store.dispatch(std::to_string(i)); }));
     }
@@ -204,4 +179,7 @@ TEST_CASE("store calls reducer on single thread")
             thread.join();
         }
     }
+
+    store.close();
 }
+} // namespace test
