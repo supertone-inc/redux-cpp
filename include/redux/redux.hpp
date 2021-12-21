@@ -35,8 +35,43 @@ public:
     }
 
     Store(Reducer reducer, State initial_state = State())
+        : state(initial_state), action_stream(action_bus.get_observable()),
+          state_stream(action_stream.scan(initial_state, reducer).publish().ref_count())
     {
+        state_stream.subscribe([&](State state) { this->state = state; });
     }
+
+    auto getState() const
+    {
+        return state;
+    }
+
+    void dispatch(Action action)
+    {
+        action_bus.get_subscriber().on_next(action);
+    }
+
+    void subscribe(std::function<void(State)> listener)
+    {
+        listener(getState());
+        state_stream.subscribe(listener);
+    }
+
+    auto get_action_stream() const
+    {
+        return action_stream;
+    }
+
+    auto get_state_stream() const
+    {
+        return state_stream;
+    }
+
+private:
+    State state;
+    rxcpp::subjects::subject<Action> action_bus;
+    rxcpp::observable<Action> action_stream;
+    rxcpp::observable<State> state_stream;
 };
 
 template <typename Reducer, typename State = typename detail::function_traits<Reducer>::template arg<0>::type,
