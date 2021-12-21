@@ -1,6 +1,10 @@
 project(redux-test)
 
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(
+    ${PROJECT_NAME}
+    main.cpp
+    store.cpp
+)
 
 target_include_directories(
     ${PROJECT_NAME}
