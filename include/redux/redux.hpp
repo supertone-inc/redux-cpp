@@ -36,7 +36,7 @@ public:
 
     Store(Reducer reducer, State initial_state = State())
         : state(initial_state), shared_mutex(std::make_shared<std::mutex>()),
-          action_stream(action_bus.get_observable().observe_on(rxcpp::observe_on_event_loop())),
+          action_stream(action_bus.get_observable().observe_on(rxcpp::observe_on_event_loop()).publish().ref_count()),
           state_stream(action_stream.scan(initial_state, reducer).publish().ref_count())
     {
         state_stream.subscribe([&](State state) {
