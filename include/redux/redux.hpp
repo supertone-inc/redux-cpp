@@ -50,17 +50,6 @@ public:
         close();
     }
 
-    void close()
-    {
-        action_bus.get_subscriber().on_completed();
-        state_stream.ignore_elements().as_blocking().subscribe();
-    }
-
-    void flush() const
-    {
-        rxcpp::observable<>::empty<int>(rxcpp::observe_on_event_loop()).as_blocking().subscribe();
-    }
-
     auto getState() const
     {
         std::lock_guard<std::mutex> lock(*shared_mutex);
@@ -91,6 +80,17 @@ public:
     auto get_state_stream() const
     {
         return state_stream;
+    }
+
+    void close()
+    {
+        action_bus.get_subscriber().on_completed();
+        state_stream.ignore_elements().as_blocking().subscribe();
+    }
+
+    void flush() const
+    {
+        rxcpp::observable<>::empty<int>(rxcpp::observe_on_event_loop()).as_blocking().subscribe();
     }
 
 private:
