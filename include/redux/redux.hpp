@@ -35,14 +35,35 @@ public:
     }
 
     Store(Reducer reducer, State initial_state = State())
-        : state(initial_state), action_stream(action_bus.get_observable()),
+        : state(initial_state), shared_mutex(std::make_shared<std::mutex>()),
+          action_stream(action_bus.get_observable().observe_on(rxcpp::observe_on_event_loop())),
           state_stream(action_stream.scan(initial_state, reducer).publish().ref_count())
     {
-        state_stream.subscribe([&](State state) { this->state = state; });
+        state_stream.subscribe([&](State state) {
+            std::lock_guard<std::mutex> lock(*shared_mutex);
+            this->state = state;
+        });
+    }
+
+    virtual ~Store()
+    {
+        close();
+    }
+
+    void close()
+    {
+        action_bus.get_subscriber().on_completed();
+        state_stream.ignore_elements().as_blocking().subscribe();
+    }
+
+    void flush() const
+    {
+        rxcpp::observable<>::empty<int>(rxcpp::observe_on_event_loop()).as_blocking().subscribe();
     }
 
     auto getState() const
     {
+        std::lock_guard<std::mutex> lock(*shared_mutex);
         return state;
     }
 
@@ -56,7 +77,10 @@ public:
         listener(getState());
         auto subscription = state_stream.subscribe(listener);
 
-        return [=]() { subscription.unsubscribe(); };
+        return [=]() {
+            flush();
+            subscription.unsubscribe();
+        };
     }
 
     auto get_action_stream() const
@@ -71,6 +95,7 @@ public:
 
 private:
     State state;
+    std::shared_ptr<std::mutex> shared_mutex;
     rxcpp::subjects::subject<Action> action_bus;
     rxcpp::observable<Action> action_stream;
     rxcpp::observable<State> state_stream;
