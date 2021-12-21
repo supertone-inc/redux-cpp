@@ -89,6 +89,7 @@ public:
         state_stream.ignore_elements().as_blocking().subscribe();
     }
 
+private:
     void flush() const
     {
         rxcpp::observable<>::empty<int>(rxcpp::observe_on_event_loop()).as_blocking().subscribe();
