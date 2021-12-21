@@ -51,10 +51,12 @@ public:
         action_bus.get_subscriber().on_next(action);
     }
 
-    void subscribe(std::function<void(State)> listener)
+    auto subscribe(std::function<void(State)> listener)
     {
         listener(getState());
-        state_stream.subscribe(listener);
+        auto subscription = state_stream.subscribe(listener);
+
+        return [=]() { subscription.unsubscribe(); };
     }
 
     auto get_action_stream() const

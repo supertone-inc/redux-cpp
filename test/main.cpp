@@ -8,6 +8,7 @@ using std::bind;
 using std::placeholders::_1;
 using std::placeholders::_2;
 using std::placeholders::_3;
+using trompeloeil::_;
 
 template <typename State, typename Action> class Mock
 {
@@ -60,6 +61,28 @@ TEST_CASE("store publishes states")
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
     REQUIRE_CALL(mock, state_listener(0));
+    store.dispatch("an action");
+}
+
+TEST_CASE("state listeners can unsubscribe")
+{
+    using State = int;
+    using Action = std::string;
+    using Mock = Mock<State, Action>;
+
+    Mock mock;
+    auto reducer = [](State state, Action action) { return state; };
+    auto store = redux::create_store(reducer);
+
+    REQUIRE_CALL(mock, state_listener(0));
+    auto unsubscribe = store.subscribe(bind(&Mock::state_listener, &mock, _1));
+
+    REQUIRE_CALL(mock, state_listener(0));
+    store.dispatch("an action");
+
+    unsubscribe();
+
+    FORBID_CALL(mock, state_listener(_));
     store.dispatch("an action");
 }
 
