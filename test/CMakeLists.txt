@@ -15,10 +15,11 @@ target_include_directories(
         deps/RxCpp/Rx/v2/src
 )
 
-target_link_libraries(
-    ${PROJECT_NAME}
-    redux
-)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(${PROJECT_NAME} pthread)
+endif()
+
+target_link_libraries(${PROJECT_NAME} redux)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/deps/doctest/scripts/cmake)
 include(doctest)
