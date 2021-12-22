@@ -133,6 +133,33 @@ TEST_CASE("store exposes state")
     store.close();
 }
 
+TEST_CASE("store does not mutate state")
+{
+    using State = std::vector<int>;
+
+    BaseMock<State, Action> mock;
+
+    std::vector<int> initial_state{0};
+
+    auto reducer = [&](State state, Action action) {
+        mock.reducer(state, action);
+
+        REQUIRE(&state != &initial_state);
+        REQUIRE(state == initial_state);
+        state.push_back(0);
+        REQUIRE(state != initial_state);
+
+        return state;
+    };
+
+    auto store = redux::create_store(reducer, initial_state);
+
+    REQUIRE_CALL(mock, reducer(_, _)).RETURN(_1);
+    store.dispatch("update");
+
+    store.close();
+}
+
 TEST_CASE("store calls reducer on single thread")
 {
     const auto DISPATCH_COUNT = 100;
