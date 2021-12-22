@@ -5,6 +5,8 @@
 
 #include <redux/redux.hpp>
 
+namespace basic
+{
 using std::bind;
 using std::placeholders::_1;
 using std::placeholders::_2;
@@ -13,9 +15,9 @@ using trompeloeil::_;
 
 using State = int;
 using Action = std::string;
-using CounterMock = Mock<State, Action>;
+using Mock = BaseMock<State, Action>;
 
-CounterMock mock;
+Mock mock;
 trompeloeil::sequence seq;
 
 auto counter_reducer = [](State state, Action action) {
@@ -35,7 +37,7 @@ auto counter_reducer = [](State state, Action action) {
 TEST_CASE("store dispatches actions")
 {
     auto store = redux::create_store(counter_reducer);
-    store.get_action_stream().subscribe(bind(&CounterMock::action_listener, &mock, _1));
+    store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
 
     REQUIRE_CALL(mock, action_listener("increase"));
     store.dispatch("increase");
@@ -62,7 +64,7 @@ TEST_CASE("store publishes state on action dispatch")
     auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.subscribe(bind(&CounterMock::state_listener, &mock, _1));
+    store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.dispatch("action");
@@ -78,7 +80,7 @@ TEST_CASE("state listeners can unsubscribe")
     auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    auto unsubscribe = store.subscribe(bind(&CounterMock::state_listener, &mock, _1));
+    auto unsubscribe = store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.dispatch("action");
@@ -96,7 +98,7 @@ TEST_CASE("store updates state")
     auto store = redux::create_store(counter_reducer);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.subscribe(bind(&CounterMock::state_listener, &mock, _1));
+    store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
     store.dispatch("increase");
@@ -173,3 +175,4 @@ TEST_CASE("store calls reducer on single thread")
 
     store.close();
 }
+} // namespace basic

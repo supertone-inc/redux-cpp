@@ -2,7 +2,7 @@
 
 #include <doctest/trompeloeil.hpp>
 
-template <typename State, typename Action> class Mock
+template <typename State, typename Action> class BaseMock
 {
 public:
     MAKE_MOCK1(action_listener, void(Action));
