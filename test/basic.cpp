@@ -99,36 +99,23 @@ TEST_CASE("store updates state")
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
+    REQUIRE(store.get_state() == 0);
 
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
     store.dispatch("increase");
+    REQUIRE(store.get_state() == 1);
 
     REQUIRE_CALL(mock, state_listener(2)).IN_SEQUENCE(seq);
     store.dispatch("increase");
+    REQUIRE(store.get_state() == 2);
 
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
     store.dispatch("decrease");
+    REQUIRE(store.get_state() == 1);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.dispatch("decrease");
-
-    store.close();
-}
-
-TEST_CASE("store exposes state")
-{
-    auto store = redux::create_store(counter_reducer);
-
     REQUIRE(store.get_state() == 0);
-
-    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.subscribe([&](State _) { mock.state_listener(store.get_state()); });
-
-    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    store.dispatch("increase");
-
-    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.dispatch("decrease");
 
     store.close();
 }

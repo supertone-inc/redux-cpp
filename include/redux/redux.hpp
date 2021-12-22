@@ -58,6 +58,7 @@ public:
 
     auto get_state() const
     {
+        flush();
         std::lock_guard<std::mutex> lock(*shared_mutex);
         return state;
     }
@@ -103,7 +104,10 @@ public:
 private:
     void flush() const
     {
-        rxcpp::observable<>::empty<int>(rxcpp::observe_on_event_loop()).as_blocking().subscribe();
+        rxcpp::observable<>::from(state_stream.map([](auto _) { return 0; }).as_dynamic(), rxcpp::observable<>::from(0))
+            .amb(rxcpp::observe_on_event_loop())
+            .as_blocking()
+            .subscribe();
     }
 
 private:
