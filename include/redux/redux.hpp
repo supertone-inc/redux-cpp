@@ -32,7 +32,7 @@ template <typename State, typename Action, typename Reducer = std::function<Stat
 public:
     using StateListener = std::function<void(State)>;
     using Next = std::function<void(Action)>;
-    using Middleware = std::function<void(Store<State, Action>, Next, Action)>;
+    using Middleware = std::function<void(Store<State, Action> *, Next, Action)>;
 
     Store()
     {
@@ -41,7 +41,8 @@ public:
     Store(Reducer reducer, State initial_state = State())
         : state(initial_state), shared_mutex(std::make_shared<std::mutex>()),
           action_stream(action_bus.get_observable().observe_on(rxcpp::observe_on_event_loop()).publish().ref_count()),
-          state_stream(action_stream.scan(initial_state, reducer).publish().ref_count())
+          state_stream(action_stream.scan(initial_state, reducer).publish().ref_count()),
+          next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
     {
         state_stream.subscribe([&](State state) {
             std::lock_guard<std::mutex> lock(*shared_mutex);
@@ -62,7 +63,7 @@ public:
 
     void dispatch(Action action)
     {
-        action_bus.get_subscriber().on_next(action);
+        next(action);
     }
 
     auto subscribe(StateListener listener)
@@ -79,6 +80,7 @@ public:
 
     void apply_middleware(Middleware middleware)
     {
+        next = [middleware, this, next = next](auto action) { middleware(this, next, action); };
     }
 
     auto get_action_stream() const
@@ -109,6 +111,7 @@ private:
     rxcpp::subjects::subject<Action> action_bus;
     rxcpp::observable<Action> action_stream;
     rxcpp::observable<State> state_stream;
+    Next next;
 };
 
 template <typename Reducer, typename State = typename detail::function_traits<Reducer>::template arg<0>::type,
