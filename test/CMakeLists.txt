@@ -2,8 +2,9 @@ project(redux-test)
 
 add_executable(
     ${PROJECT_NAME}
+    basic.cpp
     main.cpp
-    store.cpp
+    middleware.cpp
 )
 
 target_include_directories(

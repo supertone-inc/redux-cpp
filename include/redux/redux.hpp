@@ -30,6 +30,10 @@ struct function_traits<ReturnType (ClassType::*)(Args...) const>
 template <typename State, typename Action, typename Reducer = std::function<State(State, Action)>> class Store
 {
 public:
+    using StateListener = std::function<void(State)>;
+    using Next = std::function<void(Action)>;
+    using Middleware = std::function<void(Store<State, Action>, Next, Action)>;
+
     Store()
     {
     }
@@ -61,7 +65,7 @@ public:
         action_bus.get_subscriber().on_next(action);
     }
 
-    auto subscribe(std::function<void(State)> listener)
+    auto subscribe(StateListener listener)
     {
         listener(get_state());
 
@@ -71,6 +75,10 @@ public:
             flush();
             subscription.unsubscribe();
         };
+    }
+
+    void apply_middleware(Middleware middleware)
+    {
     }
 
     auto get_action_stream() const
