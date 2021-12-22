@@ -26,17 +26,41 @@ trompeloeil::sequence seq;
 TEST_CASE("store applies middlewares")
 {
     auto reducer = [](State state, Action action) { return state; };
-    auto store = redux::create_store(reducer);
-    auto middleware = [&](auto store, auto next, auto action) {
-        mock.middleware_listener(store, next, action);
-        next(action);
-    };
-    store.apply_middleware(middleware);
 
-    REQUIRE_CALL(mock, middleware_listener(&store, _, "action"));
-    store.dispatch("action");
+    SUBCASE("single middleware")
+    {
+        auto store = redux::create_store(reducer);
+        store.apply_middleware([&](auto store, auto next, auto action) {
+            mock.middleware_listener(store, next, action);
+            next(action);
+        });
+        store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
 
-    store.close();
+        REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, action_listener("action")).IN_SEQUENCE(seq);
+        store.dispatch("action");
+    }
+
+    SUBCASE("multiple middlewares")
+    {
+        auto store = redux::create_store(reducer);
+
+        for (int i = 0; i < 3; i++)
+        {
+            store.apply_middleware([&, i](auto store, auto next, auto action) {
+                mock.middleware_listener(store, next, action);
+                next(action + std::to_string(i));
+            });
+        }
+
+        store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
+
+        REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware_listener(&store, _, "action2")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware_listener(&store, _, "action21")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, action_listener("action210")).IN_SEQUENCE(seq);
+        store.dispatch("action");
+    }
 }
 
 TEST_CASE("store updates state via middlewares")
