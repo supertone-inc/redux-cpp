@@ -34,10 +34,6 @@ public:
     using Next = std::function<void(Action)>;
     using Middleware = std::function<void(Store<State, Action> *, Next, Action)>;
 
-    Store()
-    {
-    }
-
     Store(Reducer reducer, State initial_state = State())
         : state_bus(initial_state), state_stream(state_bus.get_observable().publish().ref_count()),
           next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
