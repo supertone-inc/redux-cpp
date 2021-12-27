@@ -21,27 +21,11 @@ trompeloeil::sequence seq;
 
 std::function<State(State, Action)> reducer = bind(&Mock::reducer, &mock, _1, _2);
 
-TEST_CASE("store dispatches actions")
-{
-    ALLOW_CALL(mock, reducer(_, _)).RETURN(_1);
-
-    auto store = redux::create_store(reducer);
-    store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
-
-    REQUIRE_CALL(mock, action_listener("increase"));
-    store.dispatch("increase");
-
-    REQUIRE_CALL(mock, action_listener("decrease"));
-    store.dispatch("decrease");
-
-    store.close();
-}
-
 TEST_CASE("store calls reducer on action dispatch")
 {
     auto store = redux::create_store(reducer);
 
-    REQUIRE_CALL(mock, reducer(_, _)).RETURN(_1);
+    REQUIRE_CALL(mock, reducer(_, "action")).RETURN(_1);
     store.dispatch("action");
 
     store.close();
@@ -53,10 +37,10 @@ TEST_CASE("store publishes state on action dispatch")
 
     auto store = redux::create_store(reducer);
 
-    REQUIRE_CALL(mock, state_listener(State())).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, state_listener(State())).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
     store.dispatch("action");
 
     store.close();
@@ -68,10 +52,10 @@ TEST_CASE("state listeners can unsubscribe")
 
     auto store = redux::create_store(reducer);
 
-    REQUIRE_CALL(mock, state_listener(State())).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
     auto unsubscribe = store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, state_listener(State())).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
     store.dispatch("action");
 
     unsubscribe();

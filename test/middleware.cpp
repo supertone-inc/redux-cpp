@@ -28,8 +28,6 @@ std::function<State(State, Action)> reducer = bind(&Mock::reducer, &mock, _1, _2
 
 TEST_CASE("store applies middlewares")
 {
-    ALLOW_CALL(mock, reducer(_, _)).RETURN(_1);
-
     SUBCASE("single middleware")
     {
         auto store = redux::create_store(reducer);
@@ -37,17 +35,17 @@ TEST_CASE("store applies middlewares")
             mock.middleware_listener(store, next, action);
             next(action);
         });
-        store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
 
         REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, action_listener("action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, reducer(_, "action")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
+
+        store.close();
     }
 
     SUBCASE("multiple middlewares")
     {
         auto store = redux::create_store(reducer);
-
         for (int i = 0; i < 3; i++)
         {
             store.apply_middleware([&, i](auto store, auto next, auto action) {
@@ -56,13 +54,13 @@ TEST_CASE("store applies middlewares")
             });
         }
 
-        store.get_action_stream().subscribe(bind(&Mock::action_listener, &mock, _1));
-
         REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, middleware_listener(&store, _, "action2")).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, middleware_listener(&store, _, "action21")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, action_listener("action210")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, reducer(_, "action210")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
+
+        store.close();
     }
 }
 

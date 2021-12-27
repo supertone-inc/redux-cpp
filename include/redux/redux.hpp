@@ -39,7 +39,7 @@ public:
     }
 
     Store(Reducer reducer, State initial_state = State())
-        : action_stream(action_bus.get_observable().publish().ref_count()), state_bus(initial_state),
+        : action_stream(action_bus.get_observable()), state_bus(initial_state),
           state_stream(state_bus.get_observable().publish().ref_count()),
           next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
     {
@@ -77,11 +77,6 @@ public:
     void apply_middleware(Middleware middleware)
     {
         next = [middleware, this, next = next](auto action) { middleware(this, next, action); };
-    }
-
-    auto get_action_stream() const
-    {
-        return action_stream;
     }
 
     auto get_state_stream() const
