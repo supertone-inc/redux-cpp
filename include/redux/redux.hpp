@@ -105,15 +105,15 @@ template <typename Reducer, typename State = typename detail::function_traits<Re
           typename StoreEnhancer = std::function<StoreCreator(StoreCreator)>>
 auto create_store(Reducer reducer, State preloaded_state = State(), StoreEnhancer enhancer = nullptr)
 {
-    auto store_creator = [](auto reducer, auto preloaded_state) {
-        return Store<State, Action>(reducer, preloaded_state);
+    auto create_store = [](Reducer reducer, State preloaded_state) {
+        return std::move(Store<State, Action>(reducer, preloaded_state));
     };
 
     if (enhancer == nullptr)
     {
-        return store_creator(reducer, preloaded_state);
+        return std::move(create_store(reducer, preloaded_state));
     }
 
-    return enhancer(store_creator)(reducer, preloaded_state);
+    return std::move(enhancer(create_store)(reducer, preloaded_state));
 }
 } // namespace redux
