@@ -39,11 +39,11 @@ public:
     }
 
     Store(Reducer reducer, State initial_state = State())
-        : action_stream(action_bus.get_observable()), state_bus(initial_state),
-          state_stream(state_bus.get_observable().publish().ref_count()),
+        : state_bus(initial_state), state_stream(state_bus.get_observable().publish().ref_count()),
           next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
     {
-        action_stream.observe_on(rxcpp::observe_on_event_loop())
+        action_bus.get_observable()
+            .observe_on(rxcpp::observe_on_event_loop())
             .scan(initial_state, reducer)
             .subscribe(state_bus.get_subscriber());
     }
@@ -101,7 +101,6 @@ private:
 
 private:
     rxcpp::subjects::subject<Action> action_bus;
-    rxcpp::observable<Action> action_stream;
     rxcpp::subjects::behavior<State> state_bus;
     rxcpp::observable<State> state_stream;
     Next next;
