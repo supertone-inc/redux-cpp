@@ -9,6 +9,7 @@ namespace middleware
 {
 using std::bind;
 using std::placeholders::_1;
+using std::placeholders::_2;
 using trompeloeil::_;
 
 using State = int;
@@ -23,9 +24,11 @@ class Mock : public BaseMock<State, Action>
 Mock mock;
 trompeloeil::sequence seq;
 
+std::function<State(State, Action)> reducer = bind(&Mock::reducer, &mock, _1, _2);
+
 TEST_CASE("store applies middlewares")
 {
-    auto reducer = [](State state, Action action) { return state; };
+    ALLOW_CALL(mock, reducer(_, _)).RETURN(_1);
 
     SUBCASE("single middleware")
     {
@@ -65,21 +68,6 @@ TEST_CASE("store applies middlewares")
 
 TEST_CASE("store updates state via middlewares")
 {
-    auto reducer = [&](State state, Action action) {
-        mock.reducer(state, action);
-
-        if (action == "increase")
-        {
-            return state + 1;
-        }
-
-        if (action == "double")
-        {
-            return state * 2;
-        }
-
-        return state;
-    };
     auto store = redux::create_store(reducer);
     auto middleware = [&](auto store, auto next, auto action) {
         if (action == "increase and double")
@@ -93,9 +81,9 @@ TEST_CASE("store updates state via middlewares")
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, reducer(0, "increase")).RETURN(1).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, reducer(0, "increase")).RETURN(_1 + 1).IN_SEQUENCE(seq);
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    REQUIRE_CALL(mock, reducer(1, "double")).RETURN(2).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, reducer(1, "double")).RETURN(_1 * 2).IN_SEQUENCE(seq);
     REQUIRE_CALL(mock, state_listener(2)).IN_SEQUENCE(seq);
     store.dispatch("increase and double");
 
