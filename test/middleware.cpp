@@ -10,6 +10,7 @@ namespace middleware
 using std::bind;
 using std::placeholders::_1;
 using std::placeholders::_2;
+using std::placeholders::_3;
 using trompeloeil::_;
 
 using State = int;
@@ -31,6 +32,7 @@ trompeloeil::sequence seq;
 
 Reducer reducer = bind(&Mock::reducer, &mock, _1, _2);
 StoreEnhancer enhancer = bind(&Mock::enhancer, &mock, _1);
+Middleware middleware = bind(&Mock::middleware, &mock, _1, _2, _3);
 
 TEST_CASE("store can be created using store enhancer")
 {
@@ -43,12 +45,9 @@ TEST_CASE("store applies middlewares")
     SUBCASE("single middleware")
     {
         auto store = redux::create_store(reducer);
-        store.apply_middleware([&](auto store, auto next, auto action) {
-            mock.middleware(store, next, action);
-            next(action);
-        });
+        store.apply_middleware(middleware);
 
-        REQUIRE_CALL(mock, middleware(&store, _, "action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action")).SIDE_EFFECT(_2(_3)).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, reducer(_, "action")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
 
@@ -60,15 +59,12 @@ TEST_CASE("store applies middlewares")
         auto store = redux::create_store(reducer);
         for (int i = 0; i < 3; i++)
         {
-            store.apply_middleware([&, i](auto store, auto next, auto action) {
-                mock.middleware(store, next, action);
-                next(action + std::to_string(i));
-            });
+            store.apply_middleware(middleware);
         }
 
-        REQUIRE_CALL(mock, middleware(&store, _, "action")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, middleware(&store, _, "action2")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, middleware(&store, _, "action21")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action")).SIDE_EFFECT(_2(_3 + "2")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action2")).SIDE_EFFECT(_2(_3 + "1")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action21")).SIDE_EFFECT(_2(_3 + "0")).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, reducer(_, "action210")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
 
@@ -79,17 +75,17 @@ TEST_CASE("store applies middlewares")
 TEST_CASE("store updates state via middlewares")
 {
     auto store = redux::create_store(reducer);
-    auto middleware = [&](auto store, auto next, auto action) {
-        if (action == "increase and double")
-        {
-            next("increase");
-            next("double");
-        }
-    };
     store.apply_middleware(middleware);
 
     REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
+
+    REQUIRE_CALL(mock, middleware(&store, _, "increase and double"))
+        .SIDE_EFFECT({
+            _2("increase");
+            _2("double");
+        })
+        .IN_SEQUENCE(seq);
 
     REQUIRE_CALL(mock, reducer(0, "increase")).RETURN(_1 + 1).IN_SEQUENCE(seq);
     REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
