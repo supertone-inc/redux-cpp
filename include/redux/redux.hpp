@@ -27,9 +27,10 @@ struct function_traits<ReturnType (ClassType::*)(Args...) const>
 };
 } // namespace detail
 
-template <typename State, typename Action, typename Reducer = std::function<State(State, Action)>> class Store
+template <typename State, typename Action> class Store
 {
 public:
+    using Reducer = std::function<State(State, Action)>;
     using StateListener = std::function<void(State)>;
     using Next = std::function<void(Action)>;
     using Middleware = std::function<void(Store<State, Action> *, Next, Action)>;
@@ -99,9 +100,20 @@ private:
 };
 
 template <typename Reducer, typename State = typename detail::function_traits<Reducer>::template arg<0>::type,
-          typename Action = typename detail::function_traits<Reducer>::template arg<1>::type>
-auto create_store(Reducer reducer, State initial_state = State())
+          typename Action = typename detail::function_traits<Reducer>::template arg<1>::type,
+          typename StoreCreator = std::function<Store<State, Action>(Reducer, State)>,
+          typename StoreEnhancer = std::function<StoreCreator(StoreCreator)>>
+auto create_store(Reducer reducer, State preloaded_state = State(), StoreEnhancer enhancer = nullptr)
 {
-    return std::move(Store<State, Action>(reducer, initial_state));
+    auto store_creator = [](auto reducer, auto preloaded_state) {
+        return Store<State, Action>(reducer, preloaded_state);
+    };
+
+    if (enhancer == nullptr)
+    {
+        return store_creator(reducer, preloaded_state);
+    }
+
+    return enhancer(store_creator)(reducer, preloaded_state);
 }
 } // namespace redux

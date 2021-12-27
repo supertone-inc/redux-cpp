@@ -15,16 +15,28 @@ using trompeloeil::_;
 using State = int;
 using Action = std::string;
 using Store = redux::Store<State, Action>;
+using Reducer = Store::Reducer;
+using Middleware = Store::Middleware;
+using StoreCreator = std::function<Store(Reducer, State)>;
+using StoreEnhancer = std::function<StoreCreator(StoreCreator)>;
 
 class Mock : public BaseMock<State, Action>
 {
-    MAKE_MOCK3(middleware_listener, void(Store *, Store::Next, Action));
+    MAKE_MOCK1(enhancer, StoreCreator(StoreCreator));
+    MAKE_MOCK3(middleware, void(Store *, Store::Next, Action));
 };
 
 Mock mock;
 trompeloeil::sequence seq;
 
-std::function<State(State, Action)> reducer = bind(&Mock::reducer, &mock, _1, _2);
+Reducer reducer = bind(&Mock::reducer, &mock, _1, _2);
+StoreEnhancer enhancer = bind(&Mock::enhancer, &mock, _1);
+
+TEST_CASE("store can be created using store enhancer")
+{
+    REQUIRE_CALL(mock, enhancer(_)).RETURN(_1);
+    auto store = redux::create_store(reducer, State(), enhancer);
+}
 
 TEST_CASE("store applies middlewares")
 {
@@ -32,11 +44,11 @@ TEST_CASE("store applies middlewares")
     {
         auto store = redux::create_store(reducer);
         store.apply_middleware([&](auto store, auto next, auto action) {
-            mock.middleware_listener(store, next, action);
+            mock.middleware(store, next, action);
             next(action);
         });
 
-        REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action")).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, reducer(_, "action")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
 
@@ -49,14 +61,14 @@ TEST_CASE("store applies middlewares")
         for (int i = 0; i < 3; i++)
         {
             store.apply_middleware([&, i](auto store, auto next, auto action) {
-                mock.middleware_listener(store, next, action);
+                mock.middleware(store, next, action);
                 next(action + std::to_string(i));
             });
         }
 
-        REQUIRE_CALL(mock, middleware_listener(&store, _, "action")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, middleware_listener(&store, _, "action2")).IN_SEQUENCE(seq);
-        REQUIRE_CALL(mock, middleware_listener(&store, _, "action21")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action2")).IN_SEQUENCE(seq);
+        REQUIRE_CALL(mock, middleware(&store, _, "action21")).IN_SEQUENCE(seq);
         REQUIRE_CALL(mock, reducer(_, "action210")).RETURN(_1).IN_SEQUENCE(seq);
         store.dispatch("action");
 
