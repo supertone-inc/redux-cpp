@@ -48,9 +48,10 @@ public:
             .subscribe(state_bus.get_subscriber());
     }
 
-    virtual ~Store()
+    Store(Store &&store)
+        : action_bus(std::move(store.action_bus)), state_bus(std::move(store.state_bus)),
+          state_stream(std::move(store.state_stream)), next(std::move(store.next))
     {
-        close();
     }
 
     auto get_state() const
@@ -110,6 +111,6 @@ template <typename Reducer, typename State = typename detail::function_traits<Re
           typename Action = typename detail::function_traits<Reducer>::template arg<1>::type>
 auto create_store(Reducer reducer, State initial_state = State())
 {
-    return Store<State, Action>(reducer, initial_state);
+    return std::move(Store<State, Action>(reducer, initial_state));
 }
 } // namespace redux
