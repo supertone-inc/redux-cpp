@@ -76,11 +76,6 @@ public:
         next = [middleware, this, next = next](auto action) { middleware(this, next, action); };
     }
 
-    auto get_state_stream() const
-    {
-        return state_stream;
-    }
-
     void close()
     {
         action_bus.get_subscriber().on_completed();
