@@ -1,5 +1,6 @@
 #pragma once
 
+#include <doctest.h>
 #include <doctest/trompeloeil.hpp>
 
 template <typename State, typename Action>
