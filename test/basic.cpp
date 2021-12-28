@@ -1,8 +1,7 @@
-#include <doctest.h>
-#include <doctest/trompeloeil.hpp>
-
 #include "mock.hpp"
 
+#include <doctest.h>
+#include <doctest/trompeloeil.hpp>
 #include <redux/redux.hpp>
 
 namespace basic

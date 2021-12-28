@@ -2,7 +2,8 @@
 
 #include <doctest/trompeloeil.hpp>
 
-template <typename State, typename Action> class BaseMock
+template <typename State, typename Action>
+class BaseMock
 {
 public:
     MAKE_MOCK2(reducer, State(State, Action));
