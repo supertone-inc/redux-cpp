@@ -68,7 +68,6 @@ TEST_CASE("state listeners can unsubscribe")
 TEST_CASE("store updates state")
 {
     ALLOW_CALL(mock, reducer(_, "increase")).RETURN(_1 + 1);
-    ALLOW_CALL(mock, reducer(_, "decrease")).RETURN(_1 - 1);
 
     auto store = redux::create_store(reducer);
 
@@ -76,23 +75,12 @@ TEST_CASE("store updates state")
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
     REQUIRE(store.get_state() == 0);
 
-    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    store.dispatch("increase");
-    REQUIRE(store.get_state() == 1);
-
-    REQUIRE_CALL(mock, state_listener(2)).IN_SEQUENCE(seq);
-    store.dispatch("increase");
-    REQUIRE(store.get_state() == 2);
-
-    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
-    store.dispatch("decrease");
-    REQUIRE(store.get_state() == 1);
-
-    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.dispatch("decrease");
-    REQUIRE(store.get_state() == 0);
-
-    store.close();
+    for (int i = 0; i < 1000; i++)
+    {
+        REQUIRE_CALL(mock, state_listener(i + 1)).IN_SEQUENCE(seq);
+        store.dispatch("increase");
+        REQUIRE(store.get_state() == i + 1);
+    }
 }
 
 TEST_CASE("store does not mutate state")

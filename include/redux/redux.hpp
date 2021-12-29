@@ -93,7 +93,7 @@ private:
     void flush() const
     {
         rxcpp::observable<>::from(state_stream, rxcpp::observable<>::from(state_bus.get_value()))
-            .amb(rxcpp::observe_on_event_loop())
+            .amb(rxcpp::observe_on_new_thread())
             .as_blocking()
             .subscribe();
     }
