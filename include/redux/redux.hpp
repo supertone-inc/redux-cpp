@@ -1,14 +1,14 @@
 #pragma once
 
-#include <rxcpp/rx.hpp>
-
 #include <functional>
+#include <rxcpp/rx.hpp>
 
 namespace redux
 {
 namespace detail
 {
-template <typename T> struct function_traits : public function_traits<decltype(&T::operator())>
+template <typename T>
+struct function_traits : public function_traits<decltype(&T::operator())>
 {
 };
 
@@ -16,18 +16,22 @@ template <typename ClassType, typename ReturnType, typename... Args>
 struct function_traits<ReturnType (ClassType::*)(Args...) const>
 {
     typedef ReturnType result_type;
+
     enum
     {
         arity = sizeof...(Args)
     };
-    template <size_t i> struct arg
+
+    template <size_t i>
+    struct arg
     {
         typedef typename std::tuple_element<i, std::tuple<Args...>>::type type;
     };
 };
 } // namespace detail
 
-template <typename State, typename Action> class Store
+template <typename State, typename Action>
+class Store
 {
 public:
     using Reducer = std::function<State(State, Action)>;
@@ -36,8 +40,9 @@ public:
     using Middleware = std::function<void(Store<State, Action> *, Next, Action)>;
 
     Store(Reducer reducer, State initial_state = State())
-        : state_bus(initial_state), state_stream(state_bus.get_observable().publish().ref_count()),
-          next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
+        : state_bus(initial_state)
+        , state_stream(state_bus.get_observable().publish().ref_count())
+        , next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
     {
         action_bus.get_observable()
             .observe_on(rxcpp::observe_on_event_loop())
@@ -46,8 +51,10 @@ public:
     }
 
     Store(Store &&store)
-        : action_bus(std::move(store.action_bus)), state_bus(std::move(store.state_bus)),
-          state_stream(std::move(store.state_stream)), next(std::move(store.next))
+        : action_bus(std::move(store.action_bus))
+        , state_bus(std::move(store.state_bus))
+        , state_stream(std::move(store.state_stream))
+        , next(std::move(store.next))
     {
     }
 
@@ -87,7 +94,7 @@ private:
     void flush() const
     {
         rxcpp::observable<>::from(state_stream, rxcpp::observable<>::from(state_bus.get_value()))
-            .amb(rxcpp::observe_on_event_loop())
+            .amb(rxcpp::observe_on_new_thread())
             .as_blocking()
             .subscribe();
     }
@@ -99,7 +106,8 @@ private:
     Next next;
 };
 
-template <typename Reducer, typename State = typename detail::function_traits<Reducer>::template arg<0>::type,
+template <typename Reducer,
+          typename State = typename detail::function_traits<Reducer>::template arg<0>::type,
           typename Action = typename detail::function_traits<Reducer>::template arg<1>::type,
           typename StoreCreator = std::function<Store<State, Action>(Reducer, State)>,
           typename StoreEnhancer = std::function<StoreCreator(StoreCreator)>>
