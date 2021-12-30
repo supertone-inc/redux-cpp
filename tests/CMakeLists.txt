@@ -1,4 +1,4 @@
-project(redux-test)
+project(tests)
 
 add_executable(
     ${PROJECT_NAME}

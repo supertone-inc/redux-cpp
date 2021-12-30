@@ -9,5 +9,5 @@ target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 option(REDUX_BUILD_TESTING "Build the tests" OFF)
 if(REDUX_BUILD_TESTING)
     enable_testing()
-    add_subdirectory(test)
+    add_subdirectory(tests)
 endif()

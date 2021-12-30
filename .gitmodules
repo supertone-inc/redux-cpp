@@ -1,9 +1,9 @@
-[submodule "test/deps/doctest"]
-	path = test/deps/doctest
+[submodule "tests/deps/doctest"]
+	path = tests/deps/doctest
 	url = https://github.com/doctest/doctest.git
-[submodule "test/deps/RxCpp"]
-	path = test/deps/RxCpp
+[submodule "tests/deps/RxCpp"]
+	path = tests/deps/RxCpp
 	url = https://github.com/ReactiveX/RxCpp.git
-[submodule "test/deps/trompeloeil"]
-	path = test/deps/trompeloeil
+[submodule "tests/deps/trompeloeil"]
+	path = tests/deps/trompeloeil
 	url = https://github.com/rollbear/trompeloeil.git
