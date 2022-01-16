@@ -42,7 +42,7 @@ public:
     Store(Reducer reducer, State initial_state = State())
         : state_bus(initial_state)
         , state_stream(state_bus.get_observable().publish().ref_count())
-        , next([s = action_bus.get_subscriber()](Action action) { s.on_next(action); })
+        , next([s = action_bus.get_subscriber()](Action action) { s.on_next(std::move(action)); })
     {
         action_bus.get_observable()
             .observe_on(rxcpp::observe_on_event_loop())
@@ -66,7 +66,7 @@ public:
 
     void dispatch(Action action)
     {
-        next(action);
+        next(std::move(action));
     }
 
     auto subscribe(StateListener listener)
@@ -81,7 +81,7 @@ public:
 
     void apply_middleware(Middleware middleware)
     {
-        next = [middleware, this, next = next](auto action) { middleware(this, next, action); };
+        next = [middleware, this, next = next](auto action) { middleware(this, next, std::move(action)); };
     }
 
     void close()
@@ -93,8 +93,8 @@ public:
 private:
     void flush() const
     {
-        rxcpp::observable<>::from(state_stream, rxcpp::observable<>::from(state_bus.get_value()))
-            .amb(rxcpp::observe_on_new_thread())
+        rxcpp::observable<>::from(state_stream.first().as_dynamic(), rxcpp::observable<>::from(state_bus.get_value()))
+            .amb(rxcpp::observe_on_event_loop())
             .as_blocking()
             .subscribe();
     }
