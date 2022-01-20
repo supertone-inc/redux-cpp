@@ -92,8 +92,9 @@ public:
 private:
     void flush() const
     {
-        rxcpp::observable<>::from(state_stream.first().as_dynamic(), rxcpp::observable<>::from(state_bus.get_value()))
-            .amb(rxcpp::observe_on_event_loop())
+        state_bus.get_observable()
+            .observe_on(rxcpp::observe_on_event_loop())
+            .first()
             .as_blocking()
             .subscribe();
     }
