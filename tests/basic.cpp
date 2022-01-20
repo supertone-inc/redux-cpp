@@ -30,17 +30,17 @@ TEST_CASE("store calls reducer on action dispatch")
     store.close();
 }
 
-TEST_CASE("store publishes state on action dispatch")
+TEST_CASE("store publishes states to listeners")
 {
-    ALLOW_CALL(mock, reducer(_, _)).RETURN(_1);
+    ALLOW_CALL(mock, reducer(_, "increase")).RETURN(_1 + 1);
 
     auto store = redux::create_store(reducer);
 
-    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
+    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
     store.subscribe(bind(&Mock::state_listener, &mock, _1));
 
-    REQUIRE_CALL(mock, state_listener(_)).IN_SEQUENCE(seq);
-    store.dispatch("action");
+    REQUIRE_CALL(mock, state_listener(1)).IN_SEQUENCE(seq);
+    store.dispatch("increase");
 
     store.close();
 }
@@ -65,19 +65,18 @@ TEST_CASE("state listeners can unsubscribe")
     store.close();
 }
 
-TEST_CASE("store updates state")
+TEST_CASE("get_state() waits for the last dispatch result")
 {
-    ALLOW_CALL(mock, reducer(_, "increase")).RETURN(_1 + 1);
+    auto reducer = [](State state, Action action) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        return state + 1;
+    };
 
     auto store = redux::create_store(reducer);
-
-    REQUIRE_CALL(mock, state_listener(0)).IN_SEQUENCE(seq);
-    store.subscribe(bind(&Mock::state_listener, &mock, _1));
     REQUIRE(store.get_state() == 0);
 
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 10; i++)
     {
-        REQUIRE_CALL(mock, state_listener(i + 1)).IN_SEQUENCE(seq);
         store.dispatch("increase");
         REQUIRE(store.get_state() == i + 1);
     }
